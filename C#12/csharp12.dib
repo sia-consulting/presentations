@@ -1,0 +1,518 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"}]}}
+
+#!markdown
+
+# Whats new in C# 12
+
+- Primary Constructors
+- ref readonly parameters
+- Default lambda parameters
+- Alias any type
+- Experimental attribute
+- Collection expressions
+
+#!markdown
+
+## Example of Primary Constructors
+
+Here's an example of using Primary Constructors in C#:
+
+#!csharp
+
+public readonly struct Point(double x, double y)
+{
+    public readonly double XPosition { get; } = x;
+    public readonly double YPosition { get; } = y;
+}
+
+public record Pinte(string Hello, string World) {}
+
+var pinte = new Pinte("Hello", "World");
+
+var point = new Point(3, 4);
+Console.WriteLine(point.XPosition);
+// Console.WriteLine(point.y); // error, Y is private
+
+#!markdown
+
+In C#, classes with primary constructors can also have other constructors. This allows for more flexibility when initializing objects of the class. By providing additional constructors, developers can define different ways to create instances of the class, each with its own set of parameters. These additional constructors can call the primary constructor using the `this` keyword, passing the necessary arguments. This enables the class to handle different scenarios and provide convenient ways to instantiate objects based on specific requirements. Having multiple constructors in a class with a primary constructor enhances code reusability and improves the overall usability of the class.
+
+#!csharp
+
+public readonly struct Point(double x, double y = 0)
+{
+    public readonly double XPosition { get; } = x;
+    public readonly double YPosition { get; } = y;
+
+    public Point() : this(0) { }
+}
+
+#!markdown
+
+## Example of ref readonly
+
+Here's an example of using ref readonly in C#:
+
+#!markdown
+
+C# 12 introduced `ref readonly` parameters as a solution to address the limitations of in parameters. `in` parameters were originally introduced in C# 7.2 as a way to pass readonly references, allowing both lvalues and rvalues without any annotation at the callsite. However, there were scenarios where APIs needed to disallow rvalues and enforce indication at the callsite that a reference is being captured. This is where `ref readonly` parameters come into play.
+
+`ref readonly` parameters are ideal for APIs that capture or return references from their parameters. They provide warnings if used with rvalues or without any annotation at the callsite. This allows for better control and clarity when working with readonly references.
+
+Additionally, `ref readonly` parameters enable the migration of APIs that currently use `ref` parameters but only require read-only references. This migration can be done without breaking existing users. It is worth noting that changing `ref` to `ref readonly` would be a binary breaking change for virtual methods, while changing `ref` to `in` would not be a source breaking change but would still be a binary breaking change for virtual methods.
+
+On the other hand, changing `ref readonly` to `ref` would potentially be a source breaking change, and changing `ref readonly` to `in` would not be a breaking change. It is important to consider the impact on both source code and binary compatibility when making these changes.
+
+It is important to mention that these rules apply to method signatures but not to delegate signatures. Changing `ref` to `in` in a delegate signature can be a source breaking change, as it may cause errors when assigning a method with a `ref` parameter to that delegate type after the API change.
+
+Here is a list:
+
+|Callsite annotation	|ref parameter	|ref readonly parameter	|in parameter	|out parameter|
+|----|----|----|----|----|
+|`ref`	|Allowed	|Allowed	|Warning	|Error|
+|`in`	|Error	|Allowed	|Allowed	|Error|
+|`out`	|Error	|Error	|Error	|Allowed|
+|No annotation	|Error	|Warning	|Allowed	|Error|
+
+In C#, rvalues and lvalues are terms used to describe the value categories of expressions. An lvalue refers to an expression that represents a memory location, such as a variable or an element of an array. It can appear on the left-hand side of an assignment operation. On the other hand, an rvalue refers to an expression that represents a value, such as a literal or the result of a computation. It can appear on the right-hand side of an assignment operation. Understanding the distinction between rvalues and lvalues is important when working with `ref readonly` parameters, as they provide warnings when used with rvalues to ensure that only valid references are captured.
+
+
+|Value kind	|ref parameter	|ref readonly parameter	|in parameter	|out parameter|
+|----|----|----|----|----|
+|rvalue	|Error	|Warning	|Allowed	|Error|
+|lvalue	|Allowed	|Allowed	|Allowed	|Allowed|
+
+#!markdown
+
+## Example of Default lambda parameters
+
+Here's an example of using Default lambda parameters in C#:
+
+#!csharp
+
+var HelloWorldCallback = (string a, string b) => a == "hello" && b == "world";
+
+var WorldCallback = (string a, string b = "world") => a == "hello" && b == "world";
+
+var callback = (string a = "hello", string b = "world") => a == "hello" && b == "world";
+
+#!markdown
+
+## Example of Alias any type
+
+Here's an example of using Alias any type in C#:
+
+#!csharp
+
+public void DrawLine(Point point, Point point2)
+{
+    Console.WriteLine($"imagin a line is drawn from ({point.XPosition}, {point.YPosition}) to ({point2.XPosition}, {point2.YPosition})");
+}
+
+DrawLine((3, 4), (5, 6));
+
+#!markdown
+
+## Example of Experimental attribute
+
+Here's an example of using Experimental attribute in C#:
+
+#!csharp
+
+using System.Diagnostics.CodeAnalysis;
+
+public class Foo 
+{
+    public void Bar() => Console.WriteLine("Bar");
+    [Experimental("My Diag ID")]
+    public void ExperimentalBar() => Console.WriteLine("ExperimentalBar");
+
+}
+
+var f = new Foo();
+f.ExperimentalBar();
+
+#!markdown
+
+## Example of Collection expressions
+
+Here's an example of using Experimental attribute in C#:
+
+#!csharp
+
+// Create an array:
+int[] a = [1, 2, 3, 4, 5, 6, 7, 8];
+
+// Create a list:
+List<string> b = ["one", "two", "three"];
+
+// Create a list of some sort
+IEnumerable<double> l = [1.0, 2.0, 3.0, 4.0, 5.0];
+
+// Create a jagged 2D array:
+int[][] twoD = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+
+// Create a jagged 2D array from variables:
+int[] row0 = [1, 2, 3];
+int[] row1 = [4, 5, 6];
+int[] row2 = [7, 8, 9];
+int[][] twoDFromVariables = [row0, row1, row2];
+
+#!markdown
+
+Collection initializers in C# 12 provide a concise and convenient way to initialize collections, such as arrays, lists, and dictionaries, with a set of values. With collection initializers, you can define and populate a collection in a single expression, making your code more readable and expressive. 
+
+In addition to initializing collections directly, C# 12 allows you to use collection initializers in parameters. This means that you can pass a collection initializer as an argument to a method or constructor, allowing you to create and populate a collection in a single line of code. This can be particularly useful when working with methods or constructors that expect collections as parameters, as it eliminates the need for separate initialization and population steps. By using collection initializers in parameters, you can write more concise and readable code, improving the overall efficiency and maintainability of your application.
+
+#!csharp
+
+public int Sum(IEnumerable<int> numbers) => numbers.Sum();
+
+var result = Sum([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+Console.WriteLine(result);
+
+#!markdown
+
+In C# 12, you can use spread elements in collection initializers to easily add multiple elements to a collection. The spread element, denoted by the `..` operator, allows you to expand an array or another collection into individual elements. This can be particularly useful when initializing lists, arrays, or other collection types with a large number of elements. Instead of manually adding each element one by one, you can simply use the spread element to include all the elements from another collection. This simplifies the code and makes it more concise and readable. By leveraging spread elements in collection initializers, you can efficiently populate collections with multiple elements in a single line of code.
+
+#!csharp
+
+string[] vowels = ["a", "e", "i", "o", "u"];
+string[] consonants = ["b", "c", "d", "f", "g", "h", "j", "k", "l", "m",
+                       "n", "p", "q", "r", "s", "t", "v", "w", "x", "z"];
+string[] alphabet = [.. vowels, .. consonants, "y"];
+
+#!markdown
+
+C# 12 introduces pattern matching support for collection initializers, enhancing the flexibility and expressiveness of initializing collections. With pattern matching, you can use more complex conditions to determine which elements should be included in the collection initializer. This allows you to filter and transform the elements based on specific patterns or criteria, making it easier to create collections that meet your specific requirements. By leveraging pattern matching in collection initializers, you can write more concise and powerful code, improving the readability and maintainability of your application.
+
+#!csharp
+
+List<int> numbers = new() { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+var firstElement = numbers switch
+{
+    [var head, ..var _] => head,
+    _ => throw new InvalidOperationException("Collection is empty.")
+};
+
+var lastElements = numbers switch
+{
+    [..var _, var tail] => tail,
+    _ => throw new InvalidOperationException("Collection is empty.")
+};
+
+var sequence456 = numbers switch
+{
+    [.., 4, 5, 6, _] => true,
+    _ => false
+};
+
+Dictionary<int, string> dict = [1: "hello", 2: "world"]
+
+Console.WriteLine($"First element: {firstElement}");
+Console.WriteLine($"Last elements: {string.Join(", ", lastElements)}");
+Console.WriteLine($"Sequence 4, 5, 6: {sequence456}");
+
+#!markdown
+
+# Whats new in C# 11
+
+- Raw string literals
+- Newlines in string interpolation expressions
+- UTF-8 literals
+- Generic Attributes
+- List Patterns
+- File-scoped types
+- Required Members
+- and more...
+
+#!markdown
+
+## Example of Raw String Literals
+
+Here's an example of using raw string literals to define a multi-line string in C#:
+
+#!csharp
+
+string message = @"Dear John,
+
+I hope this message finds you well. I wanted to reach out and see how you're doing. It's been a while since we last spoke.
+
+Best regards,
+Jane";
+
+Console.WriteLine(message);
+
+#!csharp
+
+string message = """
+Dear John,
+
+I hope this message finds you well. I wanted to reach out and see how you're doing. It's been a while since we last spoke.
+
+Best regards,
+Jane
+""";
+
+Console.WriteLine(message);
+
+#!markdown
+
+## New line in string interpolation expressions
+
+You can now have new lines in interpolation expressions
+
+#!csharp
+
+string name = "Micha";
+string myInterpolatedString = $"Hello {name}";
+
+bool isMichaCool = true;
+string myInterpolatedMichaString = $"Hello {name}. You are {(isMichaCool ? "cool" : "not cool")}.";
+
+#!csharp
+
+string name = "Micha";
+string myInterpolatedString = $"Hello {name}";
+
+bool isMichaCool = true;
+string myInterpolatedMichaString = $"Hello {name}. You are {(
+    isMichaCool ? 
+        "cool" 
+        : 
+        "not cool"
+    )
+}.";
+
+#!csharp
+
+string name = "Micha";
+string myInterpolatedString = $"Hello {name}";
+
+bool isMichaCool = true;
+string myInterpolatedMichaString = $"Hello {name}. You are {
+    isMichaCool switch 
+    {
+        true => "cool",
+        false => "not cool"
+    }
+}.";
+
+#!csharp
+
+string name = "Micha";
+string myInterpolatedString = $"Hello {name}";
+
+bool isMichaCool = true;
+string myInterpolatedMichaString = $"""
+                                    Hello {name}. You are {
+                                        isMichaCool switch 
+                                        {
+                                            true => "cool",
+                                            false => "not cool"
+                                        }
+                                    }.
+                                    """;
+
+#!markdown
+
+## UTF-8 literals
+
+When working with HTTP UTF-8 is the encoding you always need. C# uses UTF-16 for strings, so we need to always convert strings into UTF-8 bytes
+
+#!csharp
+
+string myJson = "{\"last_name\": \"Doe\",\"age\": 30,\"first_name\": \"John\"}";
+
+byte[] bytes = Encoding.UTF8.GetBytes(myJson);
+
+#!csharp
+
+ReadOnlySpan<byte> myJsonBytes = "{\"last_name\": \"Doe\",\"age\": 30,\"first_name\": \"John\"}"u8;
+
+#!markdown
+
+## Example of Generic Attribute
+
+Here is an example of C# Generic Attributes
+
+#!csharp
+
+class MyAttribute : Attribute {
+    Type attribType;
+
+    public MyAttribute(Type type) {
+        attribType = type;
+    }
+}
+
+[My(typeof(int))]
+class MyClass {
+}
+
+#!csharp
+
+class MyGenericAttribute<T> : Attribute {
+    public MyGenericAttribute() {
+    }
+}
+
+[MyGeneric<int>]
+class MyClass {
+}
+
+#!markdown
+
+## List Patterns
+
+New List patterns for pattern matching
+
+#!csharp
+
+int[] numbers = { 1, 2, 3 };
+
+Console.WriteLine(numbers is [1, 2, 3]);  // True
+Console.WriteLine(numbers is [1, 2, 4]);  // False
+Console.WriteLine(numbers is [1, 2, 3, 4]);  // False
+Console.WriteLine(numbers is [0 or 1, <= 2, >= 3]);  // True
+
+#!markdown
+
+You can also make use of discard and slice patterns
+
+#!csharp
+
+Console.WriteLine(new[] { 1, 2, 3, 4, 5 } is [> 0, > 0, ..]);
+Console.WriteLine(new[] { 1, 1 } is [_, _, ..]);
+Console.WriteLine(new[] { 0, 1, 2, 3, 4 } is [> 0, > 0, ..]);
+Console.WriteLine(new[] { 1 } is [1, 2, ..]); 
+
+Console.WriteLine(new[] { 1, 2, 3, 4 } is [.., > 0, > 0]);
+Console.WriteLine(new[] { 2, 4 } is [.., > 0, 2, 4]);
+Console.WriteLine(new[] { 2, 4 } is [.., 2, 4]);
+
+Console.WriteLine(new[] { 1, 2, 3, 4 } is [>= 0, .., 2 or 4]);
+Console.WriteLine(new[] { 1, 0, 0, 1 } is [1, 0, .., 0, 1]);
+Console.WriteLine(new[] { 1, 0, 1 } is [1, 0, .., 0, 1]);
+
+#!markdown
+
+### above patterns explained 
+
+- `[> 0, > 0, ..]`: Matches an array of integers that has at least two elements, where the first two elements are both greater than zero, and the rest of the elements can be any value.
+
+- `[_ , _, ..]`: Matches an array of integers that has at least two elements, where the first two elements can be any value, and the rest of the elements can be any value.
+
+- `[> 0, > 0, ..]`: Matches an array of integers that has at least two elements, where the first two elements are both greater than zero, and the rest of the elements can be any value.
+
+- `[1, 2, ..]`: Matches an array of integers that starts with the values 1 and 2, and can have any number of additional elements.
+
+- `[.., > 0, > 0]`: Matches an array of integers that ends with two elements that are both greater than zero, and can have any number of additional elements at the beginning.
+
+- `[.., > 0, 2, 4]`: Matches an array of integers that ends with the values 2 and 4, and can have any number of additional elements at the beginning.
+
+- `[.., 2, 4]`: Matches an array of integers that ends with the values 2 and 4, and can have any number of additional elements at the beginning.
+
+- `[>= 0, .., 2 or 4]`: Matches an array of integers that starts with any number of elements that are greater than or equal to zero, has any number of additional elements in the middle, and ends with either the value 2 or the value 4.
+
+- `[1, 0, .., 0, 1]`: Matches an array of integers that starts with the values 1 and 0, has any number of additional elements in the middle that are all 0, and ends with the values 0 and 1.
+
+- `[1, 0, .., 0, 1]`: Matches an array of integers that starts with the values 1 and 0, has any number of additional elements in the middle that are all 0, and ends with the values 0 and 1.
+
+#!markdown
+
+## File-scoped types
+
+You can have now types that are only visible within the same file
+
+#!csharp
+
+public class MyPublicClass {
+}
+
+private class MyPrivateClass {
+}
+
+internal class MyInternalClass {
+}
+
+protected class MyProtectedClass {
+}
+
+protected internal class MyProtectedInternalClass {
+}
+
+file class MyFileScopedClass {
+}
+
+file interface MyFileScopedInterface {
+}
+
+#!markdown
+
+## Required Members
+
+You can define members now as required, these MUST be initialized
+
+#!csharp
+
+public class MyPropClass 
+{
+    public int MyProp { get; set; }
+    public string MyProp2 { get; set; }
+    public bool MyProp3 { get; set; }
+}
+
+var myProps = new MyPropClass();
+
+#!csharp
+
+public class MyPropClass 
+{
+    public required int MyProp { get; set; }
+    public required string MyProp2 { get; set; }
+    public required bool MyProp3 { get; set; }
+}
+
+var myProps = new MyPropClass();
+
+#!csharp
+
+public class MyPropClass 
+{
+    public required int MyProp { get; set; }
+    public required string MyProp2 { get; set; }
+    public required bool MyProp3 { get; set; }
+}
+
+var myProps = new MyPropClass() 
+{
+    MyProp = 1,
+    MyProp2 = "Hello",
+    MyProp3 = true
+};
+
+#!csharp
+
+using System.Diagnostics.CodeAnalysis;
+
+public class MyPropClass 
+{
+    [SetsRequiredMembers]
+    public MyPropClass(int myProp, string myProp2) {
+        MyProp = myProp;
+        MyProp2 = myProp2;
+    }
+    public required int MyProp { get; set; }
+    public required string MyProp2 { get; set; }
+    public required bool MyProp3 { get; set; }
+}
+
+var myProps2 = new MyPropClass(1, "Hello") 
+{
+    MyProp3 = true
+};

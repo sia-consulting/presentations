@@ -1,0 +1,589 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"}]}}
+
+#!markdown
+
+# Whats new in .NET 8
+
+- System.Text.Json serialization
+ - Interface hierarchies
+ - New Naming policies
+ - Streaming deserialization APIs
+- Time abstraction
+- Randomness
+ - GetItems<T>() 
+ - Shuffle<T>()
+- Performance-focused types
+- Keyed DI services
+- System.Numerics.Tensors
+
+#!markdown
+
+## System.Text.Json serialization Interface hierachies
+
+.NET 8 adds support for serializing properties from interface hierarchies.
+
+#!csharp
+
+using System.Text.Json;
+
+public static void InterfaceHierarchies()
+{
+    IDerived value = new DerivedImplement { Base = 0, Derived = 1 };
+    string json = JsonSerializer.Serialize(value);
+    Console.WriteLine(json);
+}
+
+public interface IBase
+{
+    public int Base { get; set; }
+}
+
+public interface IDerived : IBase
+{
+    public int Derived { get; set; }
+}
+
+public class DerivedImplement : IDerived
+{
+    public int Base { get; set; }
+    public int Derived { get; set; }
+}
+
+InterfaceHierarchies();
+
+#!markdown
+
+## System.Text.Json serialization New Naming policies
+
+JsonNamingPolicy includes new naming policies for snake_case (with an underscore) and kebab-case (with a hyphen) property name conversions. Use these policies similarly to the existing JsonNamingPolicy.CamelCase policy.
+
+#!csharp
+
+using System.Text.Json;
+
+var snakeResult = JsonSerializer.Serialize(new { PropertyName = "value" }, new JsonSerializerOptions 
+{ 
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower 
+});
+
+var kebabResult = JsonSerializer.Serialize(new { PropertyName = "value" }, new JsonSerializerOptions 
+{ 
+    PropertyNamingPolicy = JsonNamingPolicy.KebabCaseLower 
+});
+Console.WriteLine(snakeResult);
+Console.WriteLine(kebabResult);
+
+#!markdown
+
+## System.Text.Json serialization Streaming deserialization APIs
+
+JsonNamingPolicy includes new naming policies for snake_case (with an underscore) and kebab-case (with a hyphen) property name conversions. Use these policies similarly to the existing JsonNamingPolicy.CamelCase policy.
+
+#!csharp
+
+#nullable enable
+#r "System.Net.Http.Json"
+
+using System.Net.Http;
+using System.Net.Http.Json;
+
+public async static Task StreamingDeserialization()
+{
+    const string RequestUri = "https://api.contoso.com/books";
+
+    using var client = new HttpClient();
+    IAsyncEnumerable<Book?> books = client.GetFromJsonAsAsyncEnumerable<Book>(RequestUri);
+
+    await foreach (Book? book in books)
+    {
+        Console.WriteLine($"Read book '{book?.title}'");
+    }
+}
+
+public record Book(int id, string title, string author, int publishedYear);
+
+
+await StreamingDeserialization();
+
+#!markdown
+
+## Time abstraction TimeProvider
+
+The new TimeProvider class and ITimer interface add time abstraction functionality, which allows you to mock time in test scenarios. In addition, you can use the time abstraction to mock Task operations that rely on time progression using Task.Delay and Task.WaitAsync.
+
+#!csharp
+
+using System.Threading;
+
+// Get system time.
+DateTimeOffset utcNow = TimeProvider.System.GetUtcNow();
+DateTimeOffset localNow = TimeProvider.System.GetLocalNow();
+
+TimerCallback callback = s => ((State)s!).Signal();
+
+var _timeProvider = TimeProvider.System;
+
+// Create a timer using the time provider.
+ITimer timer = _timeProvider.CreateTimer(
+    callback, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+
+// Measure a period using the system time provider.
+long providerTimestamp1 = TimeProvider.System.GetTimestamp();
+long providerTimestamp2 = TimeProvider.System.GetTimestamp();
+
+TimeSpan period = _timeProvider.GetElapsedTime(providerTimestamp1, providerTimestamp2);
+
+public class State 
+{
+    public void Signal() => Console.WriteLine("Signaled");
+}
+
+#!markdown
+
+## System.Random GetItems<T>
+
+The new System.Random.GetItems and System.Security.Cryptography.RandomNumberGenerator.GetItems methods let you randomly choose a specified number of items from an input set.
+
+#!csharp
+
+public struct Data 
+{
+    public Data(){}
+    public int[] AllNumbers { get; set; } = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; 
+}
+
+var d = new Data();
+
+int[] thisRound = Random.Shared.GetItems(d.AllNumbers, 31);
+
+foreach (var number in thisRound)
+{
+    Console.WriteLine(number);
+}
+
+#!markdown
+
+## System.Random Shuffle<T>
+
+The new Random.Shuffle and RandomNumberGenerator.Shuffle<T>(Span<T>) methods let you randomize the order of a span.
+
+#!csharp
+
+public struct Data 
+{
+    public Data(){}
+    public int[] AllNumbers { get; set; } = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; 
+}
+
+var d = new Data();
+
+Random.Shared.Shuffle(d.AllNumbers);
+
+foreach (var number in d.AllNumbers)
+{
+    Console.WriteLine(number);
+}
+
+#!markdown
+
+## Performance-focused types System.Collections.Frozen
+
+The new System.Collections.Frozen namespace includes the collection types FrozenDictionary<TKey,TValue> and FrozenSet<T>. These types don't allow any changes to keys and values once a collection created. That requirement allows faster read operations (for example, TryGetValue()). These types are particularly useful for collections that are populated on first use and then persisted for the duration of a long-lived service.
+
+#!csharp
+
+using System.Collections.Frozen;
+
+Dictionary<string, bool> configurationData = new Dictionary<string, bool>
+{
+    { "key1", true },
+    { "key2", false },
+    { "key3", true }
+};
+
+FrozenDictionary<string, bool> s_configurationData =
+    configurationData.ToFrozenDictionary();
+
+// ...
+if (s_configurationData.TryGetValue("key1", out bool setting) && setting)
+{
+    Console.WriteLine("Key1 is set to true");
+}
+
+#!markdown
+
+## Keyed DI services
+
+Keyed dependency injection (DI) services provide a means for registering and retrieving DI services using keys. By using keys, you can scope how you register and consume services.
+
+#!csharp
+
+#r "Microsoft.AspNetCore.Builder"
+using Microsoft.AspNetCore.Builder;
+
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<BigCacheConsumer>();
+builder.Services.AddSingleton<SmallCacheConsumer>();
+builder.Services.AddKeyedSingleton<ICache, BigCache>("big");
+builder.Services.AddKeyedSingleton<ICache, SmallCache>("small");
+WebApplication app = builder.Build();
+app.MapGet("/big", (BigCacheConsumer data) => data.GetData());
+app.MapGet("/small", (SmallCacheConsumer data) => data.GetData());
+app.MapGet("/big-cache", ([FromKeyedServices("big")] ICache cache) => cache.Get("data"));
+app.MapGet("/small-cache", (HttpContext httpContext) => httpContext.RequestServices.GetRequiredKeyedService<ICache>("small").Get("data"));
+app.Run();
+
+class BigCacheConsumer([FromKeyedServices("big")] ICache cache)
+{
+    public object? GetData() => cache.Get("data");
+}
+
+class SmallCacheConsumer(IServiceProvider serviceProvider)
+{
+    public object? GetData() => serviceProvider.GetRequiredKeyedService<ICache>("small").Get("data");
+}
+
+public interface ICache
+{
+    object Get(string key);
+}
+
+public class BigCache : ICache
+{
+    public object Get(string key) => $"Resolving {key} from big cache.";
+}
+
+public class SmallCache : ICache
+{
+    public object Get(string key) => $"Resolving {key} from small cache.";
+}
+
+#!markdown
+
+## System.Numerics.Tensors
+
+The updated System.Numerics.Tensors NuGet package includes APIs in the new TensorPrimitives namespace that add support for tensor operations. The tensor primitives optimize data-intensive workloads like those of AI and machine learning.
+
+#!markdown
+
+<details>
+  <summary>What are Tensors?</summary>
+  
+  Basically they are just Multidimensional Arrays
+</details>
+
+#!markdown
+
+# Whats new in .NET 7
+
+- System.Text.Json serialization
+ - Contract customization
+ - Polymorphic serialization
+ - Support for required members
+- Regular expressions
+ - RegexOptions.NonBacktracking 
+ - Source Generators
+ - Faster case insensitive operations
+- new Types and Extensions to Types
+ - DateTime/DateOnly/TimeOnly
+ - System.Format.Tar
+ - Unix File Mode
+ - RateLimiter
+ - StringSyntaxAttribute
+- P/Invoke source generators
+
+#!markdown
+
+## System.Text.Json serialization Contract customization
+
+Better control over the de/serialization of your types
+
+#!csharp
+
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+
+JsonSerializerOptions options = new()
+{
+    TypeInfoResolver = new DefaultJsonTypeInfoResolver
+    {
+        Modifiers = { MyCustomModifier } // IList<Action<JsonTypeInfo>>
+    }
+};
+
+#!markdown
+
+## System.Text.Json serialization Polymorphic serialization
+
+You can now use polymorphismn with System.Text.Json
+
+#!csharp
+
+// Polymorphismn
+
+using System.Text.Json.Serialization;
+
+[JsonDerivedType(typeof(WeatherForecastWithCity))]
+public class WeatherForecastBase
+{
+    public DateTimeOffset Date { get; set; }
+    public int TemperatureCelsius { get; set; }
+    public string Summary { get; set; }
+}
+
+public class WeatherForecastWithCity : WeatherForecastBase
+{
+    public string City { get; set; }
+}
+
+WeatherForecastBase weather = new WeatherForecastWithCity
+{
+    City = "Milwaukee",
+    Date = new DateTimeOffset(2022, 9, 26, 0, 0, 0, TimeSpan.FromHours(-5)),
+    TemperatureCelsius = 15,
+    Summary = "Cool"
+};
+
+var json = JsonSerializer.Serialize<WeatherForecastBase>(weather);
+Console.WriteLine(json);
+
+#!csharp
+
+// Polymorphism with type discriminator
+
+using System.Text.Json.Serialization;
+using System.Text.Json;
+
+[JsonDerivedType(typeof(WeatherForecastBase), typeDiscriminator: "base")]
+[JsonDerivedType(typeof(WeatherForecastWithCity), typeDiscriminator: "withCity")]
+public class WeatherForecastBase
+{
+    public DateTimeOffset Date { get; set; }
+    public int TemperatureCelsius { get; set; }
+    public string Summary { get; set; }
+}
+
+public class WeatherForecastWithCity : WeatherForecastBase
+{
+    public string City { get; set; }
+}
+
+WeatherForecastBase weather = new WeatherForecastWithCity
+{
+    City = "Milwaukee",
+    Date = new DateTimeOffset(2022, 9, 26, 0, 0, 0, TimeSpan.FromHours(-5)),
+    TemperatureCelsius = 15,
+    Summary = "Cool"
+};
+
+var json = JsonSerializer.Serialize<WeatherForecastBase>(weather);
+Console.WriteLine(json);
+
+#!csharp
+
+// Polymorphism with custom type discriminator
+
+using System.Text.Json.Serialization;
+using System.Text.Json;
+
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$discriminator")]
+[JsonDerivedType(typeof(WeatherForecastBase), typeDiscriminator: "base")]
+[JsonDerivedType(typeof(WeatherForecastWithCity), typeDiscriminator: "withCity")]
+public class WeatherForecastBase
+{
+    public DateTimeOffset Date { get; set; }
+    public int TemperatureCelsius { get; set; }
+    public string Summary { get; set; }
+}
+
+public class WeatherForecastWithCity : WeatherForecastBase
+{
+    public string City { get; set; }
+}
+
+WeatherForecastBase weather = new WeatherForecastWithCity
+{
+    City = "Milwaukee",
+    Date = new DateTimeOffset(2022, 9, 26, 0, 0, 0, TimeSpan.FromHours(-5)),
+    TemperatureCelsius = 15,
+    Summary = "Cool"
+};
+
+var json = JsonSerializer.Serialize<WeatherForecastBase>(weather);
+Console.WriteLine(json);
+
+#!csharp
+
+using System.Text.Json.Serialization;
+using System.Text.Json;
+
+[JsonPolymorphic(UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToBaseType)]
+[JsonDerivedType(typeof(WeatherForecastBase), typeDiscriminator: "base")]
+[JsonDerivedType(typeof(WeatherForecastWithCity), typeDiscriminator: "withCity")]
+public class WeatherForecastBase
+{
+    public DateTimeOffset Date { get; set; }
+    public int TemperatureCelsius { get; set; }
+    public string Summary { get; set; }
+}
+
+#!markdown
+
+Possible values for Fallback
+- FailSerialization
+- FallBackToBaseType
+ - An object of undeclared runtime type will fall back to the serialization contract of the base type.
+- FallBackToNearestAncestor
+ - An object of undeclared runtime type will revert to the serialization contract of the nearest declared ancestor type. 
+
+#!markdown
+
+## System.Text.Json serialization Support for required Members
+
+System.Text.Json supports required members of C# 11
+
+#!markdown
+
+## Regular Expressions NonBacktracking
+
+You can now set RegEx to not use Backtracking, this give guarantees linear-time processing and makes RegEx over faster
+
+## Regular Expressions Source Generators
+
+New RegEx Source Generators have been implemented, which create the RegEx code at compile time instead of runtime. This makes executing RegEx at compile time very fast and makes the code NativeAOT friendly. 
+
+#!csharp
+
+using System.Text.RegularExpressions;
+
+private static readonly Regex s_abcOrDefGeneratedRegex =
+    new(pattern: "abc|def",
+        options: RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+private static void EvaluateText(string text)
+{
+    if (s_abcOrDefGeneratedRegex.IsMatch(text))
+    {
+        // Take action with matching text
+    }
+}
+
+#!csharp
+
+using System.Text.RegularExpressions;
+
+[GeneratedRegex("abc|def", RegexOptions.IgnoreCase, "en-US")]
+private static partial Regex AbcOrDefGeneratedRegex();
+
+private static void EvaluateText(string text)
+{
+    if (AbcOrDefGeneratedRegex().IsMatch(text))
+    {
+        // Take action with matching text
+    }
+}
+
+#!markdown
+
+## DateTime/Offset, DateOnly, TimeOnly
+
+These types have now converters and new properties
+
+#!csharp
+
+var dts = new DateTimeOffset();
+var ts = new TimeSpan();
+
+
+Console.WriteLine(dts.Microsecond);
+Console.WriteLine(dts.Nanosecond);
+Console.WriteLine(ts.Microseconds);
+Console.WriteLine(ts.Nanoseconds);
+
+#!markdown
+
+## System.Format.Tar
+
+There are now apis to work with Tar files. Before you had to call a process and run tar cli.
+
+## Unix File Permissions
+
+Dot NET now supports handling of Unix File Permissions.
+
+## RateLimiter
+
+a new RateLimiter Class has been added, that can be use to Limit the rate of calls to APIS/Methods
+
+#!csharp
+
+#r "nuget:System.Threading.RateLimiting"
+using System.Threading.RateLimiting;
+
+var rateLimiter = new RateLimiter();
+
+
+using RateLimitLease lease = await rateLimiter.AcquireAsync(permitCount: 1, TimeSpan.FromSeconds(1));
+
+if (lease.IsAcquired)
+{
+    return await HttpClient.SendAsync(request, cancellationToken);
+}
+
+var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+if (lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
+{
+    response.Headers.Add(
+        "Retry-After",
+        ((int)retryAfter.TotalSeconds).ToString(
+            NumberFormatInfo.InvariantInfo));
+}
+
+return response;
+
+#!markdown
+
+## StringSyntaxAttribute
+
+There is a new Attribute to add syntax Highlighting in Editors for a string
+
+#!csharp
+
+using System.Diagnostics.CodeAnalysis;
+
+public class MyClass 
+{
+    [StringSyntax(StringSyntaxAttribute.DateOnlyFormat)]
+    public string MyDateOnlyString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.DateTimeFormat)]
+    public string MyDateTimeString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.TimeOnlyFormat)]
+    public string MyTimeOnlyString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.TimeSpanFormat)]
+    public string MyTimeSpanString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.NumericFormat)]
+    public string MyNumericString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.Regex)]
+    public string MyRegExString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.Uri)]
+    public string MyUriString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.Json)]
+    public string MyJsonString { get; set; }
+
+    [StringSyntax(StringSyntaxAttribute.Xml)]
+    public string MyXmlString { get; set; }
+}
+
+#!markdown
+
+## P/Invoke Source Generators
+
+New source generators have been added for P/Invoke. These create marshalling code at compile time to make P/Invokes AOT friendly. 
